@@ -1,36 +1,62 @@
+[🇨🇳 中文](README_CN.md)
+
 # Tests
 
-46个测试文件覆盖数据处理、模型架构、训练和评估。
+46 test files covering data processing, model architecture, training, and evaluation for the PointArena project.
 
-## 运行环境要求
+---
+
+## Overview
+
+The test suite is organized into the following categories:
+
+- **Environment & Resource Detection** -- verify system setup and dependencies
+- **Data Processing** -- validate normalization, cleaning, deduplication, and schema for all input datasets
+- **LLM Processing** -- test API prompting, parsing, filtering, and context length handling
+- **Training** -- smoke tests, dataset loading, and training loop verification (requires GPU/PyTorch)
+- **Architecture** -- AttnRes block injection, SinglePos coordinate encoding, FP8 mixed precision
+- **Steerable Pipeline** -- task logic and geometric constraint validation
+- **Evaluation** -- adapter loading, checkpoint ranking
+- **Data Integrity** -- audit outputs, coordinate QA, clean artifact verification
+
+---
+
+## How to Run
+
+### Prerequisites
 
 ```bash
-# 需要安装以下依赖（部分测试需要GPU/PyTorch环境）:
+# Required dependencies (some tests require GPU/PyTorch):
 #   torch, transformers, peft, datasets, cv2, numpy, pandas,
 #   PIL, pydantic, pyarrow, pytest, scipy, safetensors, einops
 
-# 设置Python路径（必需）:
+# Set the Python path (required):
 export PYTHONPATH=$PWD/..:$PYTHONPATH
 
-# 激活环境（如有conda）:
+# Activate environment if using conda:
 # conda activate pointarena
 ```
 
-## 运行测试
+### Run All Tests
 
 ```bash
 cd tests/
-
-# 运行全部测试:
 bash run_all_tests.sh
+```
 
-# 或按模块运行:
-# 环境检查（无需GPU）
+### Run Tests by Module
+
+**Environment Checks (No GPU Required)**
+
+```bash
 python test_00_detect_resources.py
 python test_00_dirs.py
 python test_01_imports.py
+```
 
-# 数据处理测试（需要src模块，无需GPU）
+**Data Processing Tests (Require src modules, no GPU)**
+
+```bash
 python test_01_schema.py
 python test_02_normalize_pixmo.py
 python test_03_normalize_robopoint.py
@@ -41,65 +67,90 @@ python test_06_build_unified_dataset.py
 python test_06_mask_to_points.py
 python test_07_dedup.py
 python test_09_final_select.py
+```
 
-# LLM处理测试
+**LLM Processing Tests**
+
+```bash
 python test_04_extract_obj_free.py
 python test_05_api_screen.py
 python test_07_prompt_and_parse.py
 python test_08_api_filter_contract.py
 python test_08_context_length.py
+```
 
-# 训练测试（需要GPU/PyTorch）
+**Training Tests (Require GPU/PyTorch)**
+
+```bash
 python test_09_train_smoke.py
 python test_10_export_molmo2_format.py
 python test_12_torch_dataset_smoke.py
 python test_15_pointarena_rewritten_dataset.py
 python test_19_steerable_d_training_dataset.py
+```
 
-# 架构测试（需要GPU/PyTorch）
-python test_20_molmo2_attnres.py        # AttnRes架构验证
+**Architecture Tests (Require GPU/PyTorch)**
+
+```bash
+python test_20_molmo2_attnres.py        # AttnRes architecture verification
 python test_21_loss_source_stats.py
 python test_22_singlepos.py
 python test_23_fp8_mixed.py
+```
 
-# Steerable管线测试
-python test_17_guide4_task_logic.py     # Guide4任务逻辑
+**Steerable Pipeline Tests**
 
-# 评估测试
+```bash
+python test_17_guide4_task_logic.py     # Guide4 task logic
+```
+
+**Evaluation Tests**
+
+```bash
 python test_10_eval_adapter.py
 python test_11_checkpoint_ranking.py
+```
 
-# 数据完整性测试
+**Data Integrity Tests**
+
+```bash
 python test_13_clean_audit_outputs.py
 python test_14_coordinate_qa_dataset.py
 python test_15_full_clean_artifacts.py
 python test_16_query_coord_normalize.py
 ```
 
-## 文件说明
+---
 
-| 文件 | 说明 |
-|------|------|
-| `conftest.py` | pytest配置，自动添加项目根目录到sys.path |
-| `env.sh` | 环境变量设置脚本（被run_all_tests.sh引用） |
-| `run_all_tests.sh` | 批量运行测试脚本 |
+## Key Tests Table
 
-## 关键测试说明
+| Test File                          | What It Tests                                                  | Dependencies                          |
+|------------------------------------|---------------------------------------------------------------|---------------------------------------|
+| `test_20_molmo2_attnres.py`        | AttnRes block injection, forward pass, gate initialization, gradient flow | GPU/PyTorch + PointArena project      |
+| `test_22_singlepos.py`             | SinglePos coordinate encoding                                 | GPU/PyTorch + PointArena project (src) |
+| `test_23_fp8_mixed.py`             | FP8 mixed precision training                                  | GPU/PyTorch + PointArena project (src) |
+| `test_17_guide4_task_logic.py`     | Steerable task candidate generation, geometric constraint validation | No GPU, PointArena project (src)       |
+| `test_19_steerable_d_training_dataset.py` | Steerable-D dataset loading, class balancing, anchor embedding | GPU/PyTorch + PointArena project (src) |
+| `test_01_schema.py`                | Data schema validation                                        | PointArena project (src)               |
+| `test_15_pointarena_rewritten_dataset.py` | Rewritten dataset loading, 5-category sampling          | GPU/PyTorch + PointArena project (src) |
+| `test_09_train_smoke.py`           | Training smoke test (quick training loop verification)        | GPU/PyTorch + PointArena project (src) |
+| `test_01_imports.py`               | Check base dependencies (cv2, datasets, numpy, etc.)          | No GPU                                |
+| `test_00_detect_resources.py`      | Detect GPU/CPU resources                                      | No GPU                                |
 
-| 测试文件 | 测试内容 | 依赖 |
-|---------|---------|------|
-| `test_20_molmo2_attnres.py` | AttnRes块注入、前向传播、gate初始化、梯度流 | GPU/PyTorch + PointArena项目 |
-| `test_22_singlepos.py` | SinglePos坐标编码 | GPU/PyTorch + PointArena项目(src) |
-| `test_23_fp8_mixed.py` | FP8混合精度训练 | GPU/PyTorch + PointArena项目(src) |
-| `test_17_guide4_task_logic.py` | Steerable任务候选生成、几何约束验证 | 无需GPU，需PointArena项目(src) |
-| `test_19_steerable_d_training_dataset.py` | Steerable-D数据集加载、类别平衡、锚点嵌入 | GPU/PyTorch + PointArena项目(src) |
-| `test_01_schema.py` | 数据模式验证 | PointArena项目(src) |
-| `test_15_pointarena_rewritten_dataset.py` | 改写数据集加载、5类别采样 | GPU/PyTorch + PointArena项目(src) |
-| `test_09_train_smoke.py` | 训练冒烟测试 (快速验证训练循环) | GPU/PyTorch + PointArena项目(src) |
-| `test_01_imports.py` | 检查基础依赖（cv2, datasets, numpy等） | 无需GPU |
-| `test_00_detect_resources.py` | 检测GPU/CPU资源 | 无需GPU |
+---
 
-### 注意
-- 所有导入 `src.*` 的测试需要完整的 PointArena 项目目录结构（含 `src/` 目录）
-- 不含 `src.*` 导入的测试可在 `submit_all/` 目录下独立运行
-- 需要 PyTorch 的测试需在有 GPU 的环境中运行
+## Supporting Files
+
+| File                    | Description                                                   |
+|-------------------------|---------------------------------------------------------------|
+| `conftest.py`           | Pytest configuration, auto-adds project root to sys.path      |
+| `env.sh`                | Environment variable setup script (sourced by run_all_tests.sh) |
+| `run_all_tests.sh`      | Batch test runner                                             |
+
+---
+
+## Important Notes
+
+- All tests that import `src.*` modules require the full PointArena project directory structure (including the `src/` directory)
+- Tests without `src.*` imports can be run independently from the `submit_all/` directory
+- Tests requiring PyTorch must be executed in a GPU-enabled environment

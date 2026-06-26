@@ -1,125 +1,127 @@
+[🇨🇳 中文](README_CN.md)
+
 # PointArena Submit All — Complete Training Pipeline
 
-本仓库包含CVPR 2026 Workshop论文 **"PointArena: Data Synthesis, AttnRes Steerability, and ABC Point Correction for Vision-Language Pointing"** 的全部可运行代码。
+This repository contains all executable code for the CVPR 2026 Workshop paper **"PointArena: Data Synthesis, AttnRes Steerability, and ABC Point Correction for Vision-Language Pointing"**.
 
-## 论文方法概览
+## Method Overview
 
-我们使用LoRA微调Molmo2-8B VLM，系统包含三个创新点：
+We fine-tune Molmo2-8B VLM using LoRA. The system features three innovations:
 
-| 创新点 | 内容 | 目录 |
-|--------|------|------|
-| **1. Agent-Driven Data Synthesis** | Gemini API + Qwen3-8B本地 + Steerable确定性生成器 | `1_gemini_pipeline/` `2_qwen_pipeline/` `3_steerable_pipeline/` |
-| **2. AttnRes for Steerability** | 门控注意力残差模块，每4层注入跨块历史信息 | `4_model_training/arch/arch_attnres.py` |
-| **3. ABC Point Correction** | 三支点坐标编码 (A=文本, B=PointMLP+ViT, C=CoordMap CNN) | `4_model_training/arch/arch_point_injection.py` |
+| Innovation | Description | Directory |
+|------------|-------------|-----------|
+| **1. Agent-Driven Data Synthesis** | Gemini API + Local Qwen3-8B + Steerable deterministic generator | `1_gemini_pipeline/` `2_qwen_pipeline/` `3_steerable_pipeline/` |
+| **2. AttnRes for Steerability** | Gated attention residual module injecting cross-block historical information every 4 layers | `4_model_training/arch/arch_attnres.py` |
+| **3. ABC Point Correction** | Three-pivot coordinate encoding (A=Text, B=PointMLP+ViT, C=CoordMap CNN) | `4_model_training/arch/arch_point_injection.py` |
 
-**最终结果**: PointArena benchmark **77.2%** (routed ensemble of 3 experts)
+**Final Result**: PointArena benchmark **77.2%** (routed ensemble of 3 experts)
 
 ---
 
-## 目录结构
+## Directory Structure
 
 ```
 submit_all/
-├── README.md                    # 本文件
-├── 0_data_download/             # 数据下载指南
-├── 1_gemini_pipeline/           # 创新点1a: Gemini API数据管线
-├── 2_qwen_pipeline/             # 创新点1b: Qwen3-8B本地数据管线
-├── 3_steerable_pipeline/        # 创新点1c: Steerable数据管线
-├── 4_model_training/            # 创新点2+3: AttnRes + ABC模型训练
-├── 5_checkpoints_and_data/      # 检查点和数据路径参考
-└── tests/                       # 测试代码 (46个测试文件)
+├── README.md                    # This file
+├── 0_data_download/             # Data download guide
+├── 1_gemini_pipeline/           # Innovation 1a: Gemini API data pipeline
+├── 2_qwen_pipeline/             # Innovation 1b: Qwen3-8B local data pipeline
+├── 3_steerable_pipeline/        # Innovation 1c: Steerable data pipeline
+├── 4_model_training/            # Innovation 2+3: AttnRes + ABC model training
+├── 5_checkpoints_and_data/      # Checkpoint and data path reference
+└── tests/                       # Test code (46 test files)
 ```
 
 ---
 
-## 环境配置
+## Environment Setup
 
-### 系统要求
-| 组件 | 最低配置 | 推荐配置 |
-|------|---------|----------|
-| GPU | 1× A100 40GB | 8× A100 40GB |
-| VRAM | 32GB (训练) / 16GB (Qwen推理) | 40GB+ |
+### System Requirements
+| Component | Minimum | Recommended |
+|-----------|---------|-------------|
+| GPU | 1x A100 40GB | 8x A100 40GB |
+| VRAM | 32GB (training) / 16GB (Qwen inference) | 40GB+ |
 | CUDA | 12.1+ | 12.8 |
 | Python | 3.10+ | 3.12 |
-| 磁盘 | 500GB | 1TB+ (数据集约200GB) |
+| Disk | 500GB | 1TB+ (datasets ~200GB) |
 
-### 安装
+### Installation
 ```bash
-# 创建环境
+# Create environment
 conda create -n pointarena python=3.12 -y && conda activate pointarena
 
 # PyTorch (CUDA 12.8)
 pip install torch==2.10.0 torchvision==0.25.0 --index-url https://download.pytorch.org/whl/cu128
 
-# 核心依赖
+# Core dependencies
 pip install transformers==4.57.0 "peft>=0.10.0" safetensors numpy Pillow einops tqdm pyyaml accelerate
 
-# 各管线额外依赖
-pip install openai                    # Gemini管线
-pip install requests                  # Qwen管线 (+ vllm可选)
-pip install opencv-python-headless shapely onnxruntime  # Steerable管线
-pip install nvidia-ml-py              # 模型训练
+# Pipeline-specific dependencies
+pip install openai                    # Gemini pipeline
+pip install requests                  # Qwen pipeline (+ vllm optional)
+pip install opencv-python-headless shapely onnxruntime  # Steerable pipeline
+pip install nvidia-ml-py              # Model training
 ```
 
 ---
 
-## 创新点1: Agent-Driven Data Synthesis
+## Innovation 1: Agent-Driven Data Synthesis
 
-### 1a. Gemini API数据管线 (`1_gemini_pipeline/`)
+### 1a. Gemini API Data Pipeline (`1_gemini_pipeline/`)
 
-使用Gemini Flash API进行4阶段数据处理 (Gatekeeping → Multipoint检测 → 5分类 → 改写)。
+Uses the Gemini Flash API for a 4-stage data processing pipeline (Gatekeeping → Multipoint Detection → 5-Class Classification → Rewriting).
 
-**要下载的文件**:
+**Files to download**:
 ```bash
-# 原始数据集通过HuggingFace下载:
+# Download raw datasets via HuggingFace:
 hf download allenai/pixmo-points --repo-type dataset --local-dir ./raw_data/pixmo_points
 hf download wentao-yuan/robopoint-data --repo-type dataset --local-dir ./raw_data/robopoint
 hf download JingkunAn/RefSpatial --repo-type dataset --local-dir ./raw_data/refspatial
 hf download FlagEval/Where2Place --repo-type dataset --local-dir ./raw_data/where2place
 ```
 
-**要跑的脚本**:
+**Scripts to run**:
 ```bash
 cd 1_gemini_pipeline/
 export VECTORENGINE_API_KEY="your-api-key"
 
-# 1. 运行4阶段管线处理所有数据源
+# 1. Run the 4-stage pipeline on all data sources
 python run_streaming.py \
     --input-dirs ../raw_data/pixmo_points ../raw_data/robopoint \
     --output-root ../processed_data/gemini \
     --target-per-category 5000 \
     --model gemini-3-flash-preview-thinking
 
-# 2. 汇总输出
+# 2. Summarize outputs
 python summarize_outputs.py --roots ../processed_data/gemini
 
-# 3. (可选) 评估分类准确率
+# 3. (Optional) Evaluate classification accuracy
 python evaluate_pointarena.py --disable-thinking --num-samples 20
 ```
 
-**论文数据**: 37,498条Gemini处理 → 24,415条可训练样本
+**Paper data**: 37,498 Gemini-processed samples → 24,415 trainable samples
 
 ---
 
-### 1b. Qwen3-8B本地数据管线 (`2_qwen_pipeline/`)
+### 1b. Qwen3-8B Local Data Pipeline (`2_qwen_pipeline/`)
 
-使用本地Qwen3-8B (vLLM serving) 进行同样的4阶段处理，免费无API费用。
+Uses a local Qwen3-8B (vLLM serving) for the same 4-stage processing — free, no API costs.
 
-**要下载的文件**:
+**Files to download**:
 ```bash
-# Qwen3-8B模型 (如果未下载):
+# Qwen3-8B model (if not already downloaded):
 hf download Qwen/Qwen3-8B --local-dir ./models/Qwen3-8B
 ```
 
-**要跑的脚本**:
+**Scripts to run**:
 ```bash
 cd 2_qwen_pipeline/
 
-# 1. 启动vLLM服务
+# 1. Start vLLM service
 bash launch_qwen3_8b_vllm.sh
-python healthcheck_vllm.py  # 验证服务正常
+python healthcheck_vllm.py  # Verify service is running
 
-# 2. 运行3类型管线 (Affordance, Object Reference, Reasoning)
+# 2. Run 3-type pipeline (Affordance, Object Reference, Reasoning)
 python run_streaming_local.py \
     --input-dirs ../raw_data \
     --output-root ../processed_data/qwen_3types \
@@ -127,7 +129,7 @@ python run_streaming_local.py \
     --target-per-category 2000 \
     --num-workers 24
 
-# 3. 运行Counting管线
+# 3. Run Counting pipeline
 python run_streaming_local.py \
     --input-dirs ../raw_data \
     --output-root ../processed_data/qwen_counting \
@@ -136,36 +138,36 @@ python run_streaming_local.py \
     --counting-mode \
     --num-workers 24
 
-# 4. 停止vLLM
+# 4. Stop vLLM
 bash stop_qwen3_8b_vllm.sh
 ```
 
-**与Gemini管线的区别**: 本地免费、3类型而非5类型、含规则引擎后处理
+**Differences from Gemini pipeline**: Local and free, 3 types instead of 5, includes rule-engine post-processing
 
 ---
 
-### 1c. Steerable数据管线 (`3_steerable_pipeline/`)
+### 1c. Steerable Data Pipeline (`3_steerable_pipeline/`)
 
-基于SAM3掩码验证的确定性生成器，700个锚点相对方向模板。无需LLM API调用。
+A deterministic generator based on SAM3 mask verification with 700 anchor relative-direction templates. No LLM API calls needed.
 
-**要下载的文件**:
+**Files to download**:
 ```bash
-# PixMo-Points数据集 (含图像):
+# PixMo-Points dataset (includes images):
 hf download allenai/pixmo-points --repo-type dataset --local-dir ./raw_data/pixmo_points
 
-# SAM3 ONNX模型 (手动下载放置):
-# 放置路径: ./models/sam3.onnx
+# SAM3 ONNX model (download manually and place):
+# Path: ./models/sam3.onnx
 ```
 
-**要跑的脚本**:
+**Scripts to run**:
 ```bash
 cd 3_steerable_pipeline/
 
-# 1. 构建和验证700模板
+# 1. Build and verify 700 templates
 python build_templates.py --output template_library_raw.json
 python filter_generated_templates.py --input template_library_raw.json --output template_library.json
 
-# 2. 运行Steerable数据生成管线
+# 2. Run the steerable data generation pipeline
 python run_pipeline.py \
     --config config.yaml \
     --input-labels ../raw_data/pixmo_points \
@@ -175,72 +177,72 @@ python run_pipeline.py \
     --max-samples 10000
 ```
 
-**输出**: `train_steerable.jsonl` — 带蓝色锚点渲染图像的锚点相对指向任务
+**Output**: `train_steerable.jsonl` — anchor-relative pointing tasks with blue anchor-point rendered images
 
 ---
 
-## 创新点2+3: AttnRes + ABC模型训练 (`4_model_training/`)
+## Innovation 2+3: AttnRes + ABC Model Training (`4_model_training/`)
 
-### 模型架构
+### Model Architecture
 
-| 实验 | 方法 | 关键模块 | 准确率 |
-|------|------|---------|--------|
-| A | 文本坐标修正 | 无(基线) | 72.3% |
-| B | PointMLP + ViT融合 | PointCoordinateMLP, ViTFeatureExtractor | 75.5% |
-| C | CoordMap CNN | B + CoordMapEncoder (多尺度热图) | **77.0%** |
-| AttnRes | 门控注意力残差 | AttnRes blocks (每4层) | 63.0% (Steerability) |
+| Experiment | Method | Key Module | Accuracy |
+|------------|--------|------------|----------|
+| A | Text coordinate correction | None (baseline) | 72.3% |
+| B | PointMLP + ViT fusion | PointCoordinateMLP, ViTFeatureExtractor | 75.5% |
+| C | CoordMap CNN | B + CoordMapEncoder (multi-scale heatmap) | **77.0%** |
+| AttnRes | Gated attention residual | AttnRes blocks (every 4 layers) | 63.0% (Steerability) |
 
-### 要下载的文件
+### Files to Download
 
 ```bash
-# 基础模型 (自动下载):
-# - allenai/Molmo2-8B (~16GB) — 标准backbone
-# - allenai/Molmo2-8B-attnres (自定义) — AttnRes backbone
+# Base models (auto-download):
+# - allenai/Molmo2-8B (~16GB) — standard backbone
+# - allenai/Molmo2-8B-attnres (custom) — AttnRes backbone
 
-# PointArena评估数据:
+# PointArena evaluation data:
 hf download PointArena/pointarena-data --repo-type dataset --local-dir ./eval_data
 
-# 处理后的训练数据 (由上方的管线生成):
+# Processed training data (generated by the pipelines above):
 # - data/cache/pointarena_rewritten_training_summary_steerable_d.json
 # - clean_3types_local/qwen3_8b_three_types_*_nodup_reverse/
 # - make_steerable1/sam_clean/outputs/mix10000_v2/07_final/accepted_samples.jsonl
 
-# 训练检查点 (位于服务器本地):
+# Training checkpoints (located on server locally):
 #   ~/PointArena/checkpoints/checkpoint.pt (3.8GB)
-#   或从提交包获取: ~/PointArena/submit/pointarena/checkpoints/checkpoint.pt
+#   Or from the submission package: ~/PointArena/submit/pointarena/checkpoints/checkpoint.pt
 ```
 
-### 要跑的脚本
+### Scripts to Run
 
 ```bash
 cd 4_model_training/
 export PYTHONPATH=$PWD:$PYTHONPATH
 
-# 实验A: 文本坐标修正基线
+# Experiment A: Text coordinate correction baseline
 python train/train_exp_a.py \
     --model_path allenai/Molmo2-8B \
     --summary_path ../data/cache/pointarena_rewritten_training_summary_steerable_d.json \
     --output_dir ../outputs/exp_a \
     --max_steps 20000 --lr 2e-4
 
-# 实验B: PointMLP + ViT
+# Experiment B: PointMLP + ViT
 python train/train_exp_b.py --exp B \
     --model_path allenai/Molmo2-8B \
     --output_dir ../outputs/exp_b \
     --noise_sigma 100.0
 
-# 实验C: CoordMap CNN (最佳)
+# Experiment C: CoordMap CNN (best)
 python train/train_exp_c.py --exp C \
     --model_path allenai/Molmo2-8B \
     --output_dir ../outputs/exp_c
 
-# Steerable + AttnRes训练
+# Steerable + AttnRes training
 python train/train_steerable_attnres.py \
     --model_path allenai/Molmo2-8B-attnres \
     --attnres_enabled --attnres_layers_per_block 4 \
     --output_dir ../outputs/attnres
 
-# 评估 (使用最终路由模型)
+# Evaluation (using final routed model)
 python eval/eval_submission.py \
     --data-dir ../eval_data \
     --checkpoint ../checkpoints/checkpoint.pt \
@@ -249,34 +251,34 @@ python eval/eval_submission.py \
 
 ---
 
-## 最终提交结果
+## Final Submission Results
 
-| 类别 | 专家 | Backbone | 检查点 | 准确率 |
-|------|------|---------|--------|--------|
+| Category | Expert | Backbone | Checkpoint | Accuracy |
+|----------|--------|----------|------------|----------|
 | Affordance | C | Molmo2-8B | C_v8/ckpt-2000 | **93.94%** |
 | Counting | C | Molmo2-8B | C_v8/ckpt-2000 | **70.41%** |
 | Reasoning | B | Molmo2-8B | B_v7/ckpt-2000 | **78.24%** |
 | Spatial Relation | C | Molmo2-8B | C_v8/ckpt-2000 | **82.56%** |
 | Steerability | steer | Molmo2-8B-attnres | AttnRes_n2/ckpt-14000 | **63.00%** |
 
-**Overall: 758/982 = 77.189%** (seed=42, 确定性推理)
+**Overall: 758/982 = 77.189%** (seed=42, deterministic inference)
 
 ---
 
-## 测试
+## Tests
 
 ```bash
 cd tests/
-bash run_all_tests.sh    # 运行全部46个测试
-# 或单独运行:
-python test_20_molmo2_attnres.py    # AttnRes架构测试
-python test_17_guide4_task_logic.py # Steerable管线测试
-python test_19_steerable_d_training_dataset.py  # 训练数据集测试
+bash run_all_tests.sh    # Run all 46 tests
+# Or run individually:
+python test_20_molmo2_attnres.py    # AttnRes architecture test
+python test_17_guide4_task_logic.py # Steerable pipeline test
+python test_19_steerable_d_training_dataset.py  # Training dataset test
 ```
 
 ---
 
-## 论文结果对照
+## Paper Result Comparison
 
 | Evidence | Config | Aff. | Cnt. | Rea. | Spa. | Ste. | **All** |
 |----------|--------|------|------|------|------|------|---------|
@@ -287,22 +289,22 @@ python test_19_steerable_d_training_dataset.py  # 训练数据集测试
 
 ---
 
-## 数据溯源
+## Data Provenance
 
-| 数据集 | HuggingFace路径 | 行数 | 用途 |
-|--------|----------------|------|------|
-| PixMo-Points | `allenai/pixmo-points` | 1,855,313 | 主要指向数据 |
-| RoboPoint | `wentao-yuan/robopoint-data` | 666,578 | 机器人空间数据 |
-| RefSpatial | `JingkunAn/RefSpatial` | 1,864 | 引用空间表达 |
-| Where2Place | `FlagEval/Where2Place` | 100 | 物体放置推理 |
-| PointArena Eval | `PointArena/pointarena-data` | 982 | 官方benchmark |
+| Dataset | HuggingFace Path | Rows | Usage |
+|---------|------------------|------|-------|
+| PixMo-Points | `allenai/pixmo-points` | 1,855,313 | Primary pointing data |
+| RoboPoint | `wentao-yuan/robopoint-data` | 666,578 | Robotic spatial data |
+| RefSpatial | `JingkunAn/RefSpatial` | 1,864 | Referential spatial expressions |
+| Where2Place | `FlagEval/Where2Place` | 100 | Object placement reasoning |
+| PointArena Eval | `PointArena/pointarena-data` | 982 | Official benchmark |
 
 ## Troubleshooting
 
-| 问题 | 解决方法 |
-|------|---------|
-| CUDA OOM | 减小batch size, 确保gradient_checkpointing开启 |
-| Gemini API超时 | 检查API key, 增加--request-timeout |
-| Qwen vLLM启动失败 | `nvidia-smi`检查GPU内存, 换GPU |
-| HF下载慢 | `export HF_ENDPOINT=https://hf-mirror.com` |
-| 导入错误 | `export PYTHONPATH=$PWD:$PYTHONPATH` |
+| Issue | Solution |
+|-------|----------|
+| CUDA OOM | Reduce batch size, ensure gradient_checkpointing is enabled |
+| Gemini API timeout | Check API key, increase --request-timeout |
+| Qwen vLLM startup failure | Run `nvidia-smi` to check GPU memory, switch GPU |
+| HF download slow | `export HF_ENDPOINT=https://hf-mirror.com` |
+| Import errors | `export PYTHONPATH=$PWD:$PYTHONPATH` |
