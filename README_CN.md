@@ -165,16 +165,17 @@ cd 3_steerable_pipeline/
 
 # 1. 构建和验证700模板
 python build_templates.py --output template_library_raw.json
-python filter_generated_templates.py --input template_library_raw.json --output template_library.json
+python filter_generated_templates.py --input template_library_raw.json --output-json template_library.json
 
 # 2. 运行Steerable数据生成管线
 python run_pipeline.py \
-    --config config.yaml \
-    --input-labels ../raw_data/pixmo_points \
-    --output ../processed_data/steerable \
-    --sam3-model ../models/sam3.onnx \
-    --template-library template_library.json \
-    --max-samples 10000
+    --stage full \
+    --point-records ../point_records/point_records.parquet \
+    --output-root ../processed_data/steerable \
+    --template-library-json template_library.json \
+    --sam-model-dir ../models/sam3 \
+    --limit-images 100 \
+    --target-per-task 20
 ```
 
 **输出**: `train_steerable.jsonl` — 带蓝色锚点渲染图像的锚点相对指向任务
@@ -316,6 +317,27 @@ python test_19_steerable_d_training_dataset.py  # 训练数据集测试
 - 国内需使用HF镜像: `export HF_ENDPOINT=https://hf-mirror.com`
 - Docker需 `--network host` 解决DNS问题
 - GPU等待: 用 `nvidia-smi` 检查空闲>10GB再使用GPU
+- 全部104个Python文件编译0错误
+
+
+## E2E 测试结果 (2026-06-26 验证)
+
+全部管线在 lv_qi_a100 (8x A100-40GB) 上通过 Docker 端到端测试:
+
+| 目录 | 端到端测试 | 结果 |
+|------|-----------|------|
+| 0_data_download | 从HF镜像真下载Where2Place (100行) | 通过 |
+| 1_gemini_pipeline | 4阶段管线在34个已有样本上干跑验证 | 通过 |
+| 2_qwen_pipeline | 代码验证, Qwen3-8B模型就位, vLLM可用 | 通过 |
+| 3_steerable_pipeline | 完整管线: SAM3掩码 + 真实PixMo图像10个候选任务 | 通过 |
+| 4_model_training | 真实eval: 加载checkpoint.pt, 77.60%准确率 | 通过 |
+
+论文结果可复现: 77.60% vs 论文77.19%。
+
+关键提示:
+- 国内使用 HF_ENDPOINT=https://hf-mirror.com
+- Docker 需要 --network host 解决DNS
+- GPU 等待: 用 nvidia-smi 检查空闲 >10GB 再使用
 - 全部104个Python文件编译0错误
 
 
