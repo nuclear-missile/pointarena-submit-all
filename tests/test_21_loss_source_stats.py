@@ -1,0 +1,172 @@
+from __future__ import annotations
+
+from src.train.loss_source_stats import (
+    analyze_assistant_tokens_for_loss,
+    build_group_sample_manifest,
+    infer_cleaning_method,
+    map_assistant_tokens_to_loss_buckets,
+    segment_target_text,
+)
+
+
+def _collect_chars(text: str, ranges: list[tuple[int, int]]) -> str:
+    chars: list[str] = []
+    for start, end in ranges:
+        chars.append(text[start:end])
+    return "".join(chars)
+
+
+class _CharTokenizer:
+    def __call__(self, text: str, *, add_special_tokens: bool = False, return_offsets_mapping: bool = False):
+        assert add_special_tokens is False
+        payload = {
+            "input_ids": [ord(ch) for ch in text],
+        }
+        if return_offsets_mapping:
+            payload["offset_mapping"] = [(idx, idx + 1) for idx, _ in enumerate(text)]
+        return payload
+
+
+def test_segment_target_text_for_pointing_tag() -> None:
+    text = '<points coords="1 1 300 798">the hand</points>'
+    buckets = segment_target_text(text)
+
+    assert _collect_chars(text, buckets["coord_digits_all"]) == "300798"
+    assert _collect_chars(text, buckets["coord_hundreds"]) == "37"
+    assert _collect_chars(text, buckets["coord_tens"]) == "09"
+    assert _collect_chars(text, buckets["coord_ones"]) == "08"
+    assert _collect_chars(text, buckets["label_text"]) == "the hand"
+    assert _collect_chars(text, buckets["other_target_text"]) == ""
+    assert _collect_chars(text, buckets["outside_target_text"]) == ""
+
+    fixed = _collect_chars(text, buckets["fixed_field"])
+    assert fixed == '<points coords="1 1  "></points>'
+
+
+def test_segment_target_text_for_counting_wrapper() -> None:
+    text = 'Counting the <points coords="1 1 300 798">the hand</points> shows a total of 1.'
+    buckets = segment_target_text(text)
+
+    assert _collect_chars(text, buckets["coord_digits_all"]) == "300798"
+    assert _collect_chars(text, buckets["label_text"]) == "the hand"
+    assert _collect_chars(text, buckets["fixed_field"]) == '<points coords="1 1  "></points>'
+    assert _collect_chars(text, buckets["other_target_text"]) == "Counting the  shows a total of 1."
+
+
+def test_segment_target_text_for_anchor_index_and_axes() -> None:
+    text = 'Counting the <points coords="1 1 274 684 2 288 550">all Book</points> shows a total of 2.'
+    buckets = segment_target_text(text)
+
+    assert _collect_chars(text, buckets["anchor_digits"]) == "11"
+    assert _collect_chars(text, buckets["point_index_digits"]) == "2"
+    assert _collect_chars(text, buckets["coord_x_digits_all"]) == "274288"
+    assert _collect_chars(text, buckets["coord_y_digits_all"]) == "684550"
+    assert _collect_chars(text, buckets["coord_x_hundreds"]) == "22"
+    assert _collect_chars(text, buckets["coord_x_tens"]) == "78"
+    assert _collect_chars(text, buckets["coord_x_ones"]) == "48"
+    assert _collect_chars(text, buckets["coord_y_hundreds"]) == "65"
+    assert _collect_chars(text, buckets["coord_y_tens"]) == "85"
+    assert _collect_chars(text, buckets["coord_y_ones"]) == "40"
+
+
+def test_infer_cleaning_method_from_selected_root() -> None:
+    assert infer_cleaning_method("sam_clean_mix10000_v2") == "sam_clean"
+    assert infer_cleaning_method("qwen3_8b_three_types_2000_each_nodup_reverse") == "clean_3types_local"
+    assert infer_cleaning_method("mix4_pointsabs_len1_10000_rule_llm") == "pointarena_extract"
+    assert infer_cleaning_method("") == "unknown"
+
+
+def test_build_group_sample_manifest_respects_group_quotas() -> None:
+    rows = []
+    for idx in range(6):
+        rows.append(
+            {
+                "id": f"aff_{idx}",
+                "metadata": {
+                    "category": "Affordance",
+                    "selected_root": "mix4_pointsabs_len1_10000_rule_llm",
+                },
+            }
+        )
+    for idx in range(5):
+        rows.append(
+            {
+                "id": f"steer_{idx}",
+                "metadata": {
+                    "category": "Steerable",
+                    "selected_root": "sam_clean_mix10000_v2",
+                },
+            }
+        )
+    for idx in range(4):
+        rows.append(
+            {
+                "id": f"obj_{idx}",
+                "metadata": {
+                    "category": "Object Reference",
+                    "selected_root": "qwen3_8b_three_types_2000_each_nodup_reverse",
+                },
+            }
+        )
+
+    manifest = build_group_sample_manifest(
+        rows,
+        sample_pool="eligible",
+        per_category=3,
+        per_method=2,
+        seed=7,
+    )
+
+    groups = manifest["groups"]
+    assert groups["category::Affordance"]["selected_count"] == 3
+    assert groups["category::Steerable"]["selected_count"] == 3
+    assert groups["category::Object Reference"]["selected_count"] == 3
+    assert groups["method::pointarena_extract"]["selected_count"] == 2
+    assert groups["method::sam_clean"]["selected_count"] == 2
+    assert groups["method::clean_3types_local"]["selected_count"] == 2
+
+    union_ids = set(manifest["sample_ids_union"])
+    assert union_ids
+    assert len(union_ids) <= sum(group["selected_count"] for group in groups.values())
+
+
+def test_map_assistant_tokens_to_loss_buckets_handles_leading_newline() -> None:
+    text = '<points coords="1 1 300 798">the hand</points>'
+    tokenizer = _CharTokenizer()
+    assistant = [ord(ch) for ch in ("\n" + text)]
+
+    buckets = map_assistant_tokens_to_loss_buckets(tokenizer, assistant, text)
+
+    assert buckets["outside_target_text"] == [0]
+    assert len(buckets["coord_digits_all"]) == 6
+    assert len(buckets["coord_hundreds"]) == 2
+    assert len(buckets["coord_tens"]) == 2
+    assert len(buckets["coord_ones"]) == 2
+
+
+def test_map_assistant_tokens_to_loss_buckets_handles_truncated_target_prefix() -> None:
+    text = 'Counting the <points coords="1 1 300 798">the hand</points> shows a total of 12.'
+    tokenizer = _CharTokenizer()
+    truncated = "\n" + text[:40]
+    assistant = [ord(ch) for ch in truncated]
+
+    buckets = map_assistant_tokens_to_loss_buckets(tokenizer, assistant, text)
+
+    assert buckets["outside_target_text"] == []
+    assert len(buckets["coord_digits_all"]) == 6
+    assert len(buckets["coord_hundreds"]) == 2
+    assert len(buckets["coord_tens"]) == 2
+    assert len(buckets["coord_ones"]) == 2
+
+
+def test_analyze_assistant_tokens_for_loss_reports_truncation_metadata() -> None:
+    text = 'Counting the <points coords="1 1 300 798">the hand</points> shows a total of 12.'
+    tokenizer = _CharTokenizer()
+    truncated = "\n" + text[:40]
+    assistant = [ord(ch) for ch in truncated]
+
+    result = analyze_assistant_tokens_for_loss(tokenizer, assistant, text)
+
+    assert result["alignment"]["alignment_mode"] == "prefix"
+    assert result["alignment"]["is_truncated"] is True
+    assert result["alignment"]["matched_token_count"] < result["alignment"]["full_target_token_count"]

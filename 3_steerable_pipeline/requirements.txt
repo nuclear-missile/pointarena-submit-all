@@ -1,0 +1,7 @@
+numpy
+Pillow
+pyyaml
+opencv-python-headless
+tqdm
+shapely
+onnxruntime
