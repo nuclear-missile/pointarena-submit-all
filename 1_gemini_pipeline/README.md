@@ -116,6 +116,15 @@ Each sample produces one JSON file:
 }
 ```
 
+
+## Docker Testing Notes
+
+- Use --network host when running in Docker containers that need pip install (default bridge lacks DNS resolution).
+- filter_with_api.py is self-contained and does not require an external scripts/paths.py module.
+- All scripts support --help for CLI argument details.
+- API key failures are expected when no key is set; the scripts handle this gracefully.
+
+
 ## Paper Data Statistics
 - Total processed: 37,498 samples
 - Trainable samples: 24,415

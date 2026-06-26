@@ -126,6 +126,8 @@ coord:
   assume_pct_0_100: true
   clip_soft_min: -1.0
   clip_soft_max: 101.0
+  hard_drop_min: -1.0
+  hard_drop_max: 101.0
 
 pair:
   min_dx: 0.06                # Minimum horizontal separation
@@ -134,6 +136,7 @@ pair:
   overlap_drop_dist: 0.01
   uniqueness_margin: 0.03
   max_axis_offshoot: 0.25
+  near_duplicate_dist: 0.02
 
 filter:
   max_ambiguity_score: 0.35
@@ -142,6 +145,15 @@ filter:
 render:
   point_radius_ratio: 0.015   # Blue point radius
   point_color: [0, 102, 255]
+  point_outline_color: [255, 255, 255]
+  target_color: [255, 64, 64]
+  target_outline_color: [255, 255, 255]
+  banner_height: 110
+
+demo:
+  target_pairs: 100
+  top_images_to_scan: 1200
+  max_relation_per_type: 20
 ```
 
 ---

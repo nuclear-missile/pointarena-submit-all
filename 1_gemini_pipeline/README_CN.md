@@ -116,6 +116,15 @@ python filter_with_api.py --input ../data/samples.jsonl --output ./filtered.json
 }
 ```
 
+
+## Docker 测试说明
+
+- Docker 容器中 pip install 需要 --network host 标志（默认桥接网络无 DNS 解析）。
+- filter_with_api.py 为独立脚本，无需外部 scripts/paths.py 模块。
+- 所有脚本均支持 --help 查看命令行参数说明。
+- 未设置 API key 时的报错为预期行为，脚本会优雅处理。
+
+
 ## 论文数据规模
 - 处理: 37,498条
 - 可训练: 24,415条

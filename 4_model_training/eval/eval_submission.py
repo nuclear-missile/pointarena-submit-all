@@ -14,9 +14,9 @@ import safetensors.torch as st
 import torch
 from PIL import Image
 
-# Add repo root to path for local parse_output
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from src.parse_output import parse_points_from_text
+# Add parent dir to path for local arch modules
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+from arch.parse_output import parse_points_from_text
 
 
 def _load_mask(mask_path):

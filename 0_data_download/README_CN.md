@@ -112,15 +112,13 @@ git clone https://huggingface.co/datasets/allenai/pixmo-points
 ```
 
 **注意:**
-- `hf` 已废弃且不再工作, 请使用 `hf` 命令代替。
+- `huggingface-cli` 已废弃且不再工作，请使用 `hf` 命令代替。
 - 如果 `hf` 不在 PATH 中, 使用 `python3 -m huggingface_hub` 或添加 `~/.local/bin` 到 PATH。
 - `download_raw_datasets.py` 依赖 `datasets` 包。
 - `download_pointarena_eval.py` 依赖 `huggingface_hub` 包。
 
-## 安装下载工具
-
-```bash
-pip install huggingface_hub datasets
-# 如果 hf 命令不可用，使用:
-# python3 -m huggingface_hub download ...
-```
+**Docker 注意事项:**
+- 在 Docker 容器中运行时，如果遇到 DNS 解析失败或网络连接问题，请添加 `--network host` 参数：
+  ```bash
+  docker run --rm --network host ...
+  ```

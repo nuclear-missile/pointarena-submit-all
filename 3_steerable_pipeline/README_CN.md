@@ -18,7 +18,9 @@ hf download allenai/pixmo-points --repo-type dataset --local-dir ./raw_data/pixm
 
 运行管线需要安装以下Python包:
 
-
+```bash
+pip install torch transformers numpy Pillow opencv-python pyyaml onnxruntime onnx
+```
 
 注意: `pip` 需要在服务器上预先安装 (`sudo apt-get install python3-pip`).
 
@@ -96,15 +98,19 @@ python build_anchor_guide.py --output anchor_guide.md
 ```yaml
 coord:
   assume_pct_0_100: true
-  clip_soft_min: -1.0 / clip_soft_max: 101.0
+  clip_soft_min: -1.0
+  clip_soft_max: 101.0
+  hard_drop_min: -1.0
+  hard_drop_max: 101.0
 
 pair:
-  min_dx: 0.06          # 最小水平间隔
-  min_dy: 0.06          # 最小垂直间隔
-  min_dist: 0.03        # 最小锚点-目标距离
+  min_dx: 0.06                # 最小水平间隔
+  min_dy: 0.06                # 最小垂直间隔
+  min_dist: 0.03              # 最小锚点-目标距离
   overlap_drop_dist: 0.01
   uniqueness_margin: 0.03
   max_axis_offshoot: 0.25
+  near_duplicate_dist: 0.02
 
 filter:
   max_ambiguity_score: 0.35
@@ -113,6 +119,15 @@ filter:
 render:
   point_radius_ratio: 0.015   # 蓝点半径
   point_color: [0, 102, 255]
+  point_outline_color: [255, 255, 255]
+  target_color: [255, 64, 64]
+  target_outline_color: [255, 255, 255]
+  banner_height: 110
+
+demo:
+  target_pairs: 100
+  top_images_to_scan: 1200
+  max_relation_per_type: 20
 ```
 
 ## 输出格式

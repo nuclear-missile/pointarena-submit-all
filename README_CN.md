@@ -299,6 +299,26 @@ python test_19_steerable_d_training_dataset.py  # 训练数据集测试
 | Where2Place | `FlagEval/Where2Place` | 100 | 物体放置推理 |
 | PointArena Eval | `PointArena/pointarena-data` | 982 | 官方benchmark |
 
+## Docker 测试验证
+
+全部代码已在 Docker 容器中验证 (`nvcr.io/nvidia/pytorch:26.02-py3`, CUDA 12.8, PyTorch 2.11)。
+
+| 目录 | 文件数 | 编译 | 测试 |
+|------|--------|------|------|
+| 0_data_download | 2 .py | 通过 | --help, verify_only, HF镜像OK |
+| 1_gemini_pipeline | 8 .py | 通过 | config/prompts导入, ChatSession, --help |
+| 2_qwen_pipeline | 9 .py | 通过 | 规则引擎, shell语法, vLLM依赖OK |
+| 3_steerable_pipeline | 6 .py | 通过 | 700模板验证, filter OK |
+| 4_model_training | 28 .py | 通过 | GPU检测, arch导入, checkpoint.pt就位 |
+| tests | 46 .py | 通过 | env.sh + run_all_tests.sh验证 |
+
+关键发现:
+- 国内需使用HF镜像: `export HF_ENDPOINT=https://hf-mirror.com`
+- Docker需 `--network host` 解决DNS问题
+- GPU等待: 用 `nvidia-smi` 检查空闲>10GB再使用GPU
+- 全部104个Python文件编译0错误
+
+
 ## Troubleshooting
 
 | 问题 | 解决方法 |

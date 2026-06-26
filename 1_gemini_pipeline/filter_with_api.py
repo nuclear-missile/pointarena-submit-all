@@ -7,17 +7,13 @@ import os
 from pathlib import Path
 from typing import Any
 
-from pathlib import Path
-import sys
-
 SCRIPT_DIR = Path(__file__).resolve().parent
-PROJECT_ROOT = SCRIPT_DIR.parent.parent
-sys.path.insert(0, str(PROJECT_ROOT))
+PROJECT_ROOT = SCRIPT_DIR.parent
+CACHE_DIR = PROJECT_ROOT / "cache"
+ROOT = PROJECT_ROOT
 
 import jsonlines
 import requests
-
-from scripts.paths import CACHE_DIR, ROOT
 
 
 DEFAULT_RESP = {

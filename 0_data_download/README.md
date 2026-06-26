@@ -115,3 +115,9 @@ git clone https://huggingface.co/datasets/allenai/pixmo-points
 - If `hf` is not in PATH, use `python3 -m huggingface_hub` or add `~/.local/bin` to PATH.
 - The `download_raw_datasets.py` script depends on the `datasets` package.
 - The `download_pointarena_eval.py` script depends on the `huggingface_hub` package.
+
+**Docker Notes:**
+- When running inside a Docker container, if you encounter DNS resolution failures or network issues, add `--network host` flag:
+  ```bash
+  docker run --rm --network host ...
+  ```
