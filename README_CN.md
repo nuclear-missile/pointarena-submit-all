@@ -4,6 +4,8 @@
 
 本仓库包含CVPR 2026 Workshop论文 **"PointArena: Data Synthesis, AttnRes Steerability, and ABC Point Correction for Vision-Language Pointing"** 的全部可运行代码。
 
+[报告](https://arxiv.org/abs/2606.29850)  [主页](https://embodied-reasoning.github.io/winners/iLearn-EAI/)
+
 ## 论文方法概览
 
 我们使用LoRA微调Molmo2-8B VLM，系统包含三个创新点：
