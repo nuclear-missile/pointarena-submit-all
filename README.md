@@ -2,6 +2,8 @@
 
 # PointArena Submit All — Complete Training Pipeline
 
+[report](https://arxiv.org/abs/2606.29850)  [webpage](https://embodied-reasoning.github.io/winners/iLearn-EAI/)
+
 This repository contains all executable code for the CVPR 2026 Workshop paper **"PointArena: Data Synthesis, AttnRes Steerability, and ABC Point Correction for Vision-Language Pointing"**.
 
 ## Method Overview
