@@ -332,3 +332,20 @@ Key notes:
 | Qwen vLLM startup failure | Run `nvidia-smi` to check GPU memory, switch GPU |
 | HF download slow | `export HF_ENDPOINT=https://hf-mirror.com` |
 | Import errors | `export PYTHONPATH=$PWD:$PYTHONPATH` |
+
+
+## Citation
+
+If you find this work useful, please consider citing:
+
+```bibtex
+@misc{hong2026efficientvisualpointingembodied,
+  title        = {Efficient Visual Pointing for Embodied AI: Agent-Driven Data Synthesis, Cross-Block Attention, and Iterative Correction},
+  author       = {Zijian Hong and Qi Lv and Yuxiang Xie and Jianming Xing and Xiang Deng and Weili Guan and Liqiang Nie},
+  year         = {2026},
+  eprint       = {2606.29850},
+  archivePrefix= {arXiv},
+  primaryClass = {cs.CV},
+  url          = {https://arxiv.org/abs/2606.29850}
+}
+```
