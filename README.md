@@ -349,3 +349,14 @@ If you find this work useful, please consider citing:
   url          = {https://arxiv.org/abs/2606.29850}
 }
 ```
+
+
+## Contributors
+
+- Zijian Hong, Harbin Institute of Technology, Shenzhen
+- Qi Lv, Harbin Institute of Technology, Shenzhen
+- Yuxiang Xie, Harbin Institute of Technology, Shenzhen
+- Jianming Xing, Harbin Institute of Technology, Shenzhen
+- Xiang Deng, Harbin Institute of Technology, Shenzhen; Ruoyu Technology
+- Weili Guan, Harbin Institute of Technology, Shenzhen
+- Liqiang Nie, Harbin Institute of Technology, Shenzhen
